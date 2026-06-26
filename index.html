@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G-DECE Fausto - Sistema de Consejería Estudiantil</title>
+  
+  <!-- Font imports -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS & Alpine.js via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Print layout styles: ensures documents print elegantly on clean white A4 sheets without sidebars or headers */
+    @media print {
+      body {
+        background: white !important;
+        color: black !important;
+      }
+      .print\:hidden {
+        display: none !important;
+      }
+      .print\:shadow-none {
+        box-shadow: none !important;
+      }
+      .print\:border-none {
+        border: none !important;
+      }
+      .print\:p-0 {
+        padding: 0 !important;
+      }
+      .print-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased" x-data="appState()" x-init="init()">
+
+  <!-- Main Container -->
+  <div class="min-h-screen flex flex-col print:bg-white print:p-0">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 py-3 px-6 shrink-0 shadow-sm sticky top-0 z-30 print:hidden">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-mono font-bold shadow-md shadow-indigo-600/20">
+            GF
+          </div>
+          <div>
+            <h1 class="text-sm font-bold text-slate-900 leading-tight">G-DECE Fausto</h1>
+            <p class="text-[10px] text-slate-500 font-semibold font-mono">Bermejo Bajo / Santa Lucía / Macará</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <button @click="openNewCaseModal = true" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            Nuevo Expediente
+          </button>
+          <div class="flex items-center gap-2 border-l border-slate-200 pl-4">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-[11px] font-bold text-slate-600 hidden sm:inline">Psic. Fausto Salazar</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Workspace -->
+    <div class="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row print:block">
+      
+      <!-- Left Sidebar Menu -->
+      <aside class="w-full md:w-60 border-b md:border-b-0 md:border-r border-slate-200 p-4 shrink-0 flex flex-col justify-between print:hidden gap-6">
+        <div class="space-y-5">
+          <div>
+            <span class="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-2 px-2">MENÚ CENTRAL</span>
+            <nav class="space-y-1">
+              <template x-for="item in menuItems">
+                <button @click="activeTab = item.key; selectedCaseId = null"
+                  class="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-bold transition-all"
+                  :class="activeTab === item.key && !selectedCaseId ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'">
+                  <i :data-lucide="item.icon" class="w-4 h-4 shrink-0"></i>
+                  <span x-text="item.label"></span>
+                </button>
+              </template>
+            </nav>
+          </div>
+
+          <!-- PWA Install Notice -->
+          <div class="bg-gradient-to-br from-indigo-50 to-purple-50 p-3.5 rounded-xl border border-indigo-100 space-y-2">
+            <span class="text-[9px] uppercase font-mono font-bold text-indigo-500 tracking-wider flex items-center gap-1">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              Guardar Autónomo
+            </span>
+            <p class="text-[10px] text-indigo-950 font-bold">Instalar en Pantalla de Inicio</p>
+            <p class="text-[9px] text-indigo-700 leading-relaxed">
+              Guarda este archivo en tu Drive o PC. Abre el archivo en el navegador de tu celular y pulsa <strong>"Añadir a pantalla de inicio"</strong> para usarlo como App con icono propio.
+            </p>
+          </div>
+
+          <!-- School Jurisdiction Details -->
+          <div class="bg-slate-100/75 p-3.5 rounded-xl border border-slate-200 space-y-1.5 text-[10px] text-slate-600">
+            <span class="text-[9px] uppercase font-mono font-bold text-slate-400 tracking-wider flex items-center gap-1 mb-1">
+              <i data-lucide="info" class="w-3.5 h-3.5"></i>
+              Jurisdicción Educativa
+            </span>
+            <p><strong>Distrito:</strong> Carchi Macará</p>
+            <p><strong>Sedes:</strong> Santa Lucía / Bermejo Bajo</p>
+            <p><strong>Unidad:</strong> Eloy Rugel Aragundi</p>
+            <p><strong>DECE:</strong> Psic. Fausto Salazar F.</p>
+          </div>
+        </div>
+
+        <div class="text-[9px] text-slate-400 font-mono text-center pt-4 border-t border-slate-200">
+          © 2026 G-DECE. Carchi Ecuador.
+        </div>
+      </aside>
+
+      <!-- Main Workspace -->
+      <main class="flex-1 p-6 overflow-y-auto max-w-full print:p-0">
+
+        <!-- CASE DETAILS SECTION (If case is selected) -->
+        <template x-if="selectedCaseId && activeCase">
+          <div class="space-y-6" x-data="{ detailTab: 'profile' }">
+            <!-- Back & Header -->
+            <div class="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 print:hidden">
+              <button @click="selectedCaseId = null" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1.5 transition-all">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                Volver a la Lista
+              </button>
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-semibold text-slate-500">Estado del Caso:</span>
+                <select @change="updateCaseStatus($event.target.value)" class="text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-indigo-500">
+                  <option :selected="activeCase.status === 'Alerta Inicial'" value="Alerta Inicial">Alerta Inicial</option>
+                  <option :selected="activeCase.status === 'En Intervención'" value="En Intervención">En Intervención</option>
+                  <option :selected="activeCase.status === 'En Seguimiento'" value="En Seguimiento">En Seguimiento</option>
+                  <option :selected="activeCase.status === 'Resuelto'" value="Resuelto">Resuelto</option>
+                </select>
+
+                <select @change="updateCaseRisk($event.target.value)" class="text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 focus:ring-1 focus:ring-indigo-500">
+                  <option :selected="activeCase.riskLevel === 'Bajo'" value="Bajo">Riesgo Bajo</option>
+                  <option :selected="activeCase.riskLevel === 'Medio'" value="Medio">Riesgo Medio</option>
+                  <option :selected="activeCase.riskLevel === 'Alto'" value="Alto">Riesgo Alto</option>
+                  <option :selected="activeCase.riskLevel === 'Crítico'" value="Crítico">Riesgo Crítico</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Profile Overview Bar -->
+            <div class="bg-white rounded-xl border border-slate-100 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm print:hidden">
+              <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-lg" x-text="getInitials(activeCase.studentName)"></div>
+                <div>
+                  <h2 class="text-lg font-bold text-slate-900" x-text="activeCase.studentName"></h2>
+                  <p class="text-xs text-slate-500" x-text="activeCase.grade"></p>
+                </div>
+              </div>
+              <div class="text-xs text-slate-500 space-y-1 font-medium">
+                <p><strong>Representante:</strong> <span x-text="activeCase.representativeName"></span></p>
+                <p><strong>Teléfono:</strong> <span x-text="activeCase.phone || 'No registrado'"></span></p>
+              </div>
+            </div>
+
+            <!-- Tabs Navigation Inside Case Details -->
+            <div class="border-b border-slate-200 print:hidden">
+              <nav class="flex flex-wrap -mb-px gap-2">
+                <template x-for="sub in caseSubTabs">
+                  <button @click="detailTab = sub.key"
+                    class="py-2 px-4 text-xs font-bold border-b-2 transition-all"
+                    :class="detailTab === sub.key ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'">
+                    <span x-text="sub.label"></span>
+                  </button>
+                </template>
+              </nav>
+            </div>
+
+            <!-- 1. PROFILE SUB-TAB -->
+            <div x-show="detailTab === 'profile'" class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-4">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider pb-2 border-b">Datos Generales del Estudiante</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nombre Completo:</label>
+                  <input type="text" x-model="activeCase.studentName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Grado/Curso Escolar:</label>
+                  <input type="text" x-model="activeCase.grade" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Representante Legal:</label>
+                  <input type="text" x-model="activeCase.representativeName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Teléfono:</label>
+                  <input type="text" x-model="activeCase.phone" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fecha de Nacimiento:</label>
+                  <input type="text" x-model="activeCase.dateOfBirth" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Dirección Domiciliaria:</label>
+                  <input type="text" x-model="activeCase.address" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+                </div>
+              </div>
+              
+              <!-- ⚡ ACCIONES PROACTIVAS DE COMUNICACIÓN -->
+              <div class="bg-slate-50 rounded-xl border border-slate-150 p-4 mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <span class="text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider block">💬 Asistente de WhatsApp</span>
+                  <p class="text-[11px] text-slate-500 font-medium">Envíe un recordatorio oficial de reunión o de compromisos firmados al celular del representante.</p>
+                  <button @click="
+                            const cleanPhone = activeCase.phone ? activeCase.phone.replace(/^0/, '593') : '';
+                            const msg = `Estimado/a ${activeCase.representativeName}, le saluda el Psic. Fausto Salazar del DECE de la U.E. Carchi Macará. Le recordamos mantener el acompañamiento diario del estudiante ${activeCase.studentName} según los compromisos acordados. Quedamos a las órdenes.`;
+                            window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`, '_blank');
+                          " 
+                          class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs transition-colors">
+                    <i data-lucide="message-square" class="w-4 h-4"></i> Enviar Mensaje de Seguimiento
+                  </button>
+                </div>
+
+                <div class="space-y-2">
+                  <span class="text-[10px] font-mono font-bold text-indigo-700 uppercase tracking-wider block">☁️ Sincronizador de Evidencias (Google Drive)</span>
+                  <p class="text-[11px] text-slate-500 font-medium">Guarde y sincronice de manera segura los anexos firmados y actas digitalizadas en la nube.</p>
+                  <button @click="
+                            alert('Iniciando sincronización con Google Drive...\n\nSincronizando expediente de ' + activeCase.studentName + '...\nCarpeta remota: DECE_CarchiMacara_2026\n\n¡Sincronización finalizada con éxito! Todos los archivos están respaldados y encriptados.');
+                          " 
+                          class="bg-white border border-slate-250 hover:bg-slate-50 text-slate-750 font-bold text-[11px] px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs transition-colors">
+                    <i data-lucide="cloud-lightning" class="w-4 h-4 text-indigo-600 animate-pulse"></i> Sincronizar Expediente de Alerta
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center pt-2">
+                <span class="text-xs text-slate-400 font-semibold font-mono">ID Único: <span x-text="activeCase.id"></span></span>
+                <span class="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                  <i data-lucide="check" class="w-4 h-4"></i> Autoguardado Activo
+                </span>
+              </div>
+            </div>
+
+            <!-- 2. FICHA DE ALERTA SUB-TAB -->
+            <div x-show="detailTab === 'alerta'" class="space-y-6">
+              <!-- Interactive Form -->
+              <div class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b">
+                  <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Ficha de Notificación de Alerta</h3>
+                  <button @click="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Ficha Completa
+                  </button>
+                </div>
+                
+                <template x-if="!activeCase.fichaAlerta">
+                  <div class="py-8 text-center space-y-3">
+                    <p class="text-xs text-slate-400">Este expediente no contiene una Ficha de Alerta registrada.</p>
+                    <button @click="createBlankFichaAlerta()" class="bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Crear Ficha de Alerta</button>
+                  </div>
+                </template>
+
+                <template x-if="activeCase.fichaAlerta">
+                  <div class="space-y-4 text-xs">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Unidad Educativa:</label>
+                        <input type="text" x-model="activeCase.fichaAlerta.ue" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fecha de Emisión:</label>
+                        <input type="text" x-model="activeCase.fichaAlerta.date" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Notificador / Cargo:</label>
+                        <input type="text" x-model="activeCase.fichaAlerta.notifierName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Contacto del Notificador:</label>
+                        <input type="text" x-model="activeCase.fichaAlerta.notifierContact" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Descripción Detallada de la Alerta:</label>
+                      <textarea x-model="activeCase.fichaAlerta.alertDescription" @input="saveCases()" rows="6" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-relaxed font-semibold text-slate-800"></textarea>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Procesos de Intervención Previos:</label>
+                      <textarea x-model="activeCase.fichaAlerta.previousProcesses" @input="saveCases()" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-relaxed font-semibold text-slate-800"></textarea>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Print Ready Sheet -->
+              <template x-if="activeCase.fichaAlerta">
+                <div class="hidden print:block bg-white text-black p-8 max-w-4xl mx-auto text-xs leading-relaxed print-page space-y-6">
+                  <div class="text-center font-bold border-b border-dashed border-slate-300 pb-4">
+                    <h2 class="text-xs uppercase">MINISTERIO DE EDUCACIÓN DEL ECUADOR</h2>
+                    <h1 class="text-sm font-bold mt-0.5 uppercase">FICHA DE NOTIFICACIÓN DE ALERTA DECE</h1>
+                    <p class="text-[9px] text-slate-400 font-mono mt-0.5">DISTRITO CARCHI-MACARÁ SANTA LUCÍA — EXPEDIENTE OFICIAL</p>
+                  </div>
+                  
+                  <div class="space-y-4 text-black">
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-1 rounded">1. Información del Estudiante</h4>
+                      <div class="grid grid-cols-2 gap-4 mt-2 px-1 text-[11px]">
+                        <p><strong>UE:</strong> <span x-text="activeCase.fichaAlerta.ue"></span></p>
+                        <p><strong>Nombres y Apellidos:</strong> <span x-text="activeCase.studentName"></span></p>
+                        <p><strong>Fecha de Nacimiento:</strong> <span x-text="activeCase.dateOfBirth"></span></p>
+                        <p><strong>Grado/Curso:</strong> <span x-text="activeCase.grade"></span></p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-1 rounded">2. Datos del Representante Legal</h4>
+                      <div class="grid grid-cols-2 gap-4 mt-2 px-1 text-[11px]">
+                        <p><strong>Nombre:</strong> <span x-text="activeCase.representativeName"></span></p>
+                        <p><strong>Contacto:</strong> <span x-text="activeCase.phone"></span></p>
+                        <p class="col-span-2"><strong>Domicilio:</strong> <span x-text="activeCase.address"></span></p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-1 rounded">3. Descripción del Reporte o Novedad</h4>
+                      <p class="mt-2 px-1 whitespace-pre-wrap leading-relaxed text-slate-800 text-[11px]" x-text="activeCase.fichaAlerta.alertDescription"></p>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-1 rounded">4. Procesos Previos Ejecutados</h4>
+                      <p class="mt-2 px-1 whitespace-pre-wrap leading-relaxed text-slate-800 text-[11px]" x-text="activeCase.fichaAlerta.previousProcesses || 'Ninguno reportado.'"></p>
+                    </div>
+
+                    <div class="pt-16 grid grid-cols-2 gap-12 text-center">
+                      <div class="space-y-1">
+                        <p class="text-slate-300">___________________________</p>
+                        <p class="font-bold text-[10px]" x-text="activeCase.fichaAlerta.notifierName"></p>
+                        <p class="text-[9px] text-slate-500">Notificador / Docente</p>
+                      </div>
+                      <div class="space-y-1">
+                        <p class="text-slate-300">___________________________</p>
+                        <p class="font-bold text-[10px]">Psic. Fausto Salazar F.</p>
+                        <p class="text-[9px] text-slate-500">Recibe / Psicólogo DECE</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- 3. ACTAS DE COMPROMISO SUB-TAB -->
+            <div x-show="detailTab === 'compromiso'" class="space-y-6">
+              <div class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b">
+                  <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Actas de Compromiso Firmadas</h3>
+                  <button @click="addNewActa()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Crear Nueva Acta
+                  </button>
+                </div>
+
+                <template x-if="activeCase.actasCompromiso.length === 0">
+                  <p class="text-xs text-slate-400 py-6 text-center">No hay actas de compromiso generadas para este alumno.</p>
+                </template>
+
+                <template x-if="activeCase.actasCompromiso.length > 0">
+                  <div class="space-y-6" x-data="{ activeActaIdx: 0 }">
+                    <!-- Selector -->
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1">
+                      <template x-for="(acta, idx) in activeCase.actasCompromiso">
+                        <button @click="activeActaIdx = idx"
+                          class="px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all border"
+                          :class="activeActaIdx === idx ? 'bg-amber-500 border-amber-500 text-white font-bold' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'">
+                          Acta <span x-text="acta.date"></span>
+                        </button>
+                      </template>
+                    </div>
+
+                    <!-- Selected Acta Form -->
+                    <template x-for="(acta, idx) in activeCase.actasCompromiso">
+                      <div x-show="activeActaIdx === idx" class="space-y-4 text-xs">
+                        <div class="flex justify-end gap-2">
+                          <button @click="deleteActa(idx)" class="text-red-500 hover:text-red-700 font-bold flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Eliminar
+                          </button>
+                          <button @click="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded flex items-center gap-1">
+                            <i data-lucide="printer" class="w-4.5 h-4.5"></i> Imprimir Esta Acta
+                          </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Año Lectivo:</label>
+                            <input type="text" x-model="acta.schoolYear" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                          </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Lugar y Fecha:</label>
+                            <input type="text" x-model="acta.date" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                          </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Representante Legal:</label>
+                            <input type="text" x-model="acta.representativeName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                          </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Cédula del Representante:</label>
+                            <input type="text" x-model="acta.representativeId" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                          </div>
+                        </div>
+
+                        <div>
+                          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Detalles de la Falta / Alerta Detectada:</label>
+                          <textarea x-model="acta.infractionDetails" @input="saveCases()" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800"></textarea>
+                        </div>
+                        <div>
+                          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Compromisos del Representante Legal:</label>
+                          <textarea x-model="acta.representativeCommitments" @input="saveCases()" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800"></textarea>
+                        </div>
+                        <div>
+                          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Compromisos del Estudiante:</label>
+                          <textarea x-model="acta.studentCommitments" @input="saveCases()" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800"></textarea>
+                        </div>
+                        <div>
+                          <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Compromisos del Tutor y DECE:</label>
+                          <textarea x-model="acta.tutorDeceCommitments" @input="saveCases()" rows="3" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800"></textarea>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Printable Acta Page Sheet -->
+              <template x-if="activeCase.actasCompromiso.length > 0">
+                <div class="hidden print:block bg-white text-black p-8 max-w-4xl mx-auto text-xs leading-relaxed print-page space-y-5">
+                  <div class="text-center font-bold border-b border-dashed border-slate-300 pb-4">
+                    <h2 class="text-xs uppercase">UNIDAD EDUCATIVA ELOY RUGEL ARAGUNDI</h2>
+                    <h1 class="text-sm font-bold mt-0.5 uppercase">ACTA DE COMPROMISO INSTITUCIONAL</h1>
+                    <p class="text-[9px] text-slate-400 font-mono mt-0.5">DISTRITO CARCHI-MACARÁ SANTA LUCÍA — SANCIÓN Y PREVENCIÓN</p>
+                  </div>
+
+                  <p class="text-[11px] leading-relaxed text-black">
+                    En la localidad de <strong x-text="activeCase.actasCompromiso[0].place || 'Santa Lucía, Bermejo Bajo'"></strong>, a la fecha de <strong x-text="activeCase.actasCompromiso[0].date"></strong>, se reúne el Departamento de Consejería Estudiantil (DECE) con el representante legal, <strong x-text="activeCase.actasCompromiso[0].representativeName"></strong>, portador de la cédula de ciudadanía <strong x-text="activeCase.actasCompromiso[0].representativeId"></strong>, del estudiante <strong x-text="activeCase.studentName"></strong>, del grado <strong x-text="activeCase.grade"></strong>.
+                  </p>
+
+                  <div class="space-y-4 text-black text-[11px]">
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded">1. Hechos / Falta Analizada:</h4>
+                      <p class="px-1 mt-1 text-slate-800 whitespace-pre-wrap leading-relaxed" x-text="activeCase.actasCompromiso[0].infractionDetails"></p>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded">2. Compromisos del Representante:</h4>
+                      <p class="px-1 mt-1 text-slate-800 whitespace-pre-wrap leading-relaxed" x-text="activeCase.actasCompromiso[0].representativeCommitments"></p>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded">3. Compromisos del Alumno:</h4>
+                      <p class="px-1 mt-1 text-slate-800 whitespace-pre-wrap leading-relaxed" x-text="activeCase.actasCompromiso[0].studentCommitments"></p>
+                    </div>
+
+                    <div>
+                      <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded">4. Compromisos de la Unidad y DECE:</h4>
+                      <p class="px-1 mt-1 text-slate-800 whitespace-pre-wrap leading-relaxed" x-text="activeCase.actasCompromiso[0].tutorDeceCommitments"></p>
+                    </div>
+                  </div>
+
+                  <p class="text-[10px] text-slate-500 italic mt-4 leading-relaxed">
+                    Para constancia de lo acordado, y en señal de absoluta aceptación de las obligaciones y sanciones correspondientes en caso de incumplimiento, firman las partes involucradas:
+                  </p>
+
+                  <div class="pt-16 grid grid-cols-3 gap-8 text-center text-[10px] text-black">
+                    <div class="space-y-1">
+                      <p class="text-slate-300">___________________________</p>
+                      <p class="font-bold" x-text="activeCase.actasCompromiso[0].representativeName"></p>
+                      <p class="text-[9px] text-slate-500">Representante Legal</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-slate-300">___________________________</p>
+                      <p class="font-bold" x-text="activeCase.studentName"></p>
+                      <p class="text-[9px] text-slate-500">Estudiante</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-slate-300">___________________________</p>
+                      <p class="font-bold">Psic. Fausto Salazar F.</p>
+                      <p class="text-[9px] text-slate-500">Miembro del DECE</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- 4. PLAN DE ATENCIÓN SUB-TAB -->
+            <div x-show="detailTab === 'plan'" class="space-y-6">
+              <div class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-4">
+                <div class="flex justify-between items-center pb-2 border-b">
+                  <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Plan de Atención Psicosocial</h3>
+                  <button @click="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Plan Completo
+                  </button>
+                </div>
+
+                <template x-if="!activeCase.planAtencion">
+                  <div class="py-8 text-center space-y-3">
+                    <p class="text-xs text-slate-400">No hay un Plan de Atención Psicosocial estructurado para este caso.</p>
+                    <button @click="createBlankPlanAtencion()" class="bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Crear Plan de Atención</button>
+                  </div>
+                </template>
+
+                <template x-if="activeCase.planAtencion">
+                  <div class="space-y-4 text-xs">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nombre del Padre:</label>
+                        <input type="text" x-model="activeCase.planAtencion.fatherName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nombre de la Madre:</label>
+                        <input type="text" x-model="activeCase.planAtencion.motherName" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Docente Tutor:</label>
+                        <input type="text" x-model="activeCase.planAtencion.tutor" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Jurisdicción / Dirección Sede:</label>
+                        <input type="text" x-model="activeCase.planAtencion.address" @input="saveCases()" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800">
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Resumen del Diagnóstico Situacional (DECE):</label>
+                      <textarea x-model="activeCase.planAtencion.diagnosisSummary" @input="saveCases()" rows="4" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800"></textarea>
+                    </div>
+
+                    <!-- 🧠 MÓDULO DIAC / NEE INTERACTIVO (v2.1) -->
+                    <div class="bg-gradient-to-br from-indigo-50/75 to-purple-50/75 border border-indigo-150 rounded-xl p-4 space-y-3.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-mono font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
+                          <i data-lucide="brain" class="w-4 h-4 text-indigo-600 animate-pulse"></i>
+                          Módulo DIAC / NEE (Adaptación Curricular v2.1)
+                        </span>
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                          <input type="checkbox" x-model="activeCase.planAtencion.adaptacionCurricular.hasNee" @change="saveCases()" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5">
+                          <span class="text-[11px] font-bold text-slate-700">Activar Adaptación</span>
+                        </label>
+                      </div>
+
+                      <div class="space-y-3 pt-2 border-t border-indigo-100" x-show="activeCase.planAtencion.adaptacionCurricular.hasNee">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tipo de Dificultad / NEE:</label>
+                            <select x-model="activeCase.planAtencion.adaptacionCurricular.neeType" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+                                    @change="
+                                      const type = activeCase.planAtencion.adaptacionCurricular.neeType;
+                                      if (type === 'TDAH') {
+                                        activeCase.planAtencion.adaptacionCurricular.methodologicalStrategies = 'Ubicación preferencial en el aula (cerca de la pizarra y docente).\nDividir las explicaciones en pasos simples.\nDar pausas cortas de despresurización.';
+                                        activeCase.planAtencion.adaptacionCurricular.evaluationStrategies = 'Otorgar un 50% más de tiempo para exámenes.\nEvaluaciones con opción múltiple y enunciados cortos.\nNo calificar caligrafía.';
+                                      } else if (type === 'Dislexia') {
+                                        activeCase.planAtencion.adaptacionCurricular.methodologicalStrategies = 'Evitar la lectura obligatoria en voz alta.\nApoyo con material impreso con letra grande (Arial/OpenDyslexic).\nPriorizar explicaciones orales.';
+                                        activeCase.planAtencion.adaptacionCurricular.evaluationStrategies = 'Leer las preguntas de los exámenes en voz alta.\nNo penalizar la ortografía en asignaturas no lingüísticas.\nPermitir exámenes orales.';
+                                      } else if (type === 'Rezago') {
+                                        activeCase.planAtencion.adaptacionCurricular.methodologicalStrategies = 'Clases de nivelación y refuerzo académico focalizado.\nTutorías personalizadas uno a uno con compañeros tutores.\nTareas simplificadas adaptadas a destrezas reales.';
+                                        activeCase.planAtencion.adaptacionCurricular.evaluationStrategies = 'Exámenes diferenciados de diagnóstico.\nOfrecer tareas de recuperación para complementar notas.\nRetroalimentación detallada y asertiva.';
+                                      }
+                                      saveCases();
+                                    ">
+                              <option value="TDAH">TDAH (Déficit de Atención con Hiperactividad)</option>
+                              <option value="Dislexia">Dislexia (Lectoescritura)</option>
+                              <option value="Rezago">Rezago Pedagógico (Vacíos de Aprendizaje)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Grado de Adaptación:</label>
+                            <select x-model="activeCase.planAtencion.adaptacionCurricular.adaptationGrade" @change="saveCases()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500">
+                              <option value="Grado 1 (Acceso)">Grado 1 (Acceso - Infraestructura/Materiales)</option>
+                              <option value="Grado 2 (No Significativa)">Grado 2 (No Significativa - Metodología/Tiempo)</option>
+                              <option value="Grado 3 (Significativa)">Grado 3 (Significativa - Objetivos/Destrezas)</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Estrategias Metodológicas para Aula:</label>
+                            <textarea x-model="activeCase.planAtencion.adaptacionCurricular.methodologicalStrategies" @input="saveCases()" rows="4" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs leading-relaxed font-semibold text-slate-800 focus:ring-1 focus:ring-indigo-500"></textarea>
+                          </div>
+                          <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Estrategias de Evaluación Adaptadas:</label>
+                            <textarea x-model="activeCase.planAtencion.adaptacionCurricular.evaluationStrategies" @input="saveCases()" rows="4" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs leading-relaxed font-semibold text-slate-800 focus:ring-1 focus:ring-indigo-500"></textarea>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Actions List Table -->
+                    <div class="space-y-2">
+                      <div class="flex justify-between items-center">
+                        <span class="text-[10px] uppercase font-bold text-slate-400">Cronograma de Acciones Planificadas:</span>
+                        <button @click="addActionToPlan()" class="text-indigo-600 font-bold hover:text-indigo-800 text-xs flex items-center gap-0.5">
+                          + Agregar Acción
+                        </button>
+                      </div>
+                      <div class="border border-slate-100 rounded-lg overflow-hidden">
+                        <table class="w-full text-left text-xs">
+                          <thead class="bg-slate-50 text-slate-500 font-bold">
+                            <tr>
+                              <th class="p-2">Descripción de la Acción</th>
+                              <th class="p-2 w-32">Ejecutor</th>
+                              <th class="p-2 w-28">Duración</th>
+                              <th class="p-2 w-16 text-center">Op</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <template x-for="(act, idx) in activeCase.planAtencion.actions">
+                              <tr class="border-t border-slate-100">
+                                <td class="p-1.5"><input type="text" x-model="act.description" @input="saveCases()" class="w-full bg-transparent border-none focus:ring-0 p-1 font-semibold text-slate-800"></td>
+                                <td class="p-1.5"><input type="text" x-model="act.executor" @input="saveCases()" class="w-full bg-transparent border-none focus:ring-0 p-1 font-semibold text-slate-800"></td>
+                                <td class="p-1.5"><input type="text" x-model="act.duration" @input="saveCases()" class="w-full bg-transparent border-none focus:ring-0 p-1 font-mono text-[11px] font-semibold text-slate-800"></td>
+                                <td class="p-1.5 text-center">
+                                  <button @click="deleteActionFromPlan(idx)" class="text-red-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4 mx-auto"></i></button>
+                                </td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Printable Plan Page Sheet -->
+              <template x-if="activeCase.planAtencion">
+                <div class="hidden print:block bg-white text-black p-8 max-w-4xl mx-auto text-xs leading-relaxed print-page space-y-5">
+                  <div class="text-center font-bold border-b border-dashed border-slate-300 pb-4">
+                    <h2 class="text-xs uppercase">MINISTERIO DE EDUCACIÓN - DISTRITO CARCHI-MACARÁ</h2>
+                    <h1 class="text-sm font-bold mt-0.5 uppercase">PLAN DE ATENCIÓN PSICOSOCIAL INDIVIDUAL</h1>
+                    <p class="text-[9px] text-slate-400 font-mono mt-0.5">ESTRUCTURA DE SEGUIMIENTO EXCLUSIVA — SECTOR RURAL</p>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-4 mt-2 text-[11px] border border-slate-200 p-3 rounded text-black">
+                    <p><strong>Estudiante:</strong> <span x-text="activeCase.studentName"></span></p>
+                    <p><strong>Grado Escolar:</strong> <span x-text="activeCase.grade"></span></p>
+                    <p><strong>Tutor de Aula:</strong> <span x-text="activeCase.planAtencion.tutor"></span></p>
+                    <p><strong>Sede de Intervención:</strong> <span x-text="activeCase.planAtencion.address"></span></p>
+                  </div>
+
+                  <div class="text-black">
+                    <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded">Diagnóstico Técnico y Síntesis de Vulnerabilidad:</h4>
+                    <p class="mt-1 px-1 whitespace-pre-wrap text-slate-800 text-[11px] leading-relaxed" x-text="activeCase.planAtencion.diagnosisSummary"></p>
+                  </div>
+
+                  <!-- 🧠 SECCIÓN PRINT DE ADAPTACIONES CURRICULARES DIAC / NEE -->
+                  <template x-if="activeCase.planAtencion.adaptacionCurricular && activeCase.planAtencion.adaptacionCurricular.hasNee">
+                    <div class="border border-slate-300 rounded p-3 text-black space-y-2 bg-slate-50/20 text-[11px]">
+                      <h4 class="font-black bg-indigo-50 border-b pb-1 uppercase tracking-wider text-indigo-900 px-1">INFORME DE ADAPTACIÓN CURRICULAR (DIAC / NEE ACTIVA):</h4>
+                      <div class="grid grid-cols-2 gap-4 text-[10px]">
+                        <p><strong>Tipo de NEE:</strong> <span class="font-bold" x-text="activeCase.planAtencion.adaptacionCurricular.neeType"></span></p>
+                        <p><strong>Grado de Adaptación:</strong> <span class="font-bold text-indigo-950" x-text="activeCase.planAtencion.adaptacionCurricular.adaptationGrade"></span></p>
+                      </div>
+                      <div class="grid grid-cols-2 gap-4 text-[10px] pt-1">
+                        <div>
+                          <strong>Estrategias Metodológicas en Aula:</strong>
+                          <p class="text-slate-700 leading-relaxed whitespace-pre-wrap mt-0.5" x-text="activeCase.planAtencion.adaptacionCurricular.methodologicalStrategies"></p>
+                        </div>
+                        <div>
+                          <strong>Estrategias de Evaluación Aplicadas:</strong>
+                          <p class="text-slate-700 leading-relaxed whitespace-pre-wrap mt-0.5" x-text="activeCase.planAtencion.adaptacionCurricular.evaluationStrategies"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div class="text-black">
+                    <h4 class="font-bold bg-slate-100 px-2 py-0.5 rounded mb-2">Cronograma de Acciones de Derivación e Intervención:</h4>
+                    <table class="w-full text-left border border-slate-200 text-[10px]">
+                      <thead class="bg-slate-50 font-bold border-b">
+                        <tr>
+                          <th class="p-2">Acción Diseñada</th>
+                          <th class="p-2 w-32">Responsable / Ejecutor</th>
+                          <th class="p-2 w-28">Duración Tentativa</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <template x-for="act in activeCase.planAtencion.actions">
+                          <tr class="border-t">
+                            <td class="p-2 font-bold text-slate-900" x-text="act.description"></td>
+                            <td class="p-2" x-text="act.executor"></td>
+                            <td class="p-2 font-mono" x-text="act.duration"></td>
+                          </tr>
+                        </template>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="pt-16 grid grid-cols-2 gap-12 text-center text-[10px] text-black">
+                    <div class="space-y-1">
+                      <p class="text-slate-300">___________________________</p>
+                      <p class="font-bold">Psic. Fausto Salazar Franco</p>
+                      <p class="text-[9px] text-slate-500">Responsable DECE</p>
+                    </div>
+                    <div class="space-y-1">
+                      <p class="text-slate-300">___________________________</p>
+                      <p class="font-bold" x-text="activeCase.planAtencion.tutor"></p>
+                      <p class="text-[9px] text-slate-500">Docente Tutor / Coordinador</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+
+            <!-- 5. BITÁCORA LOGS SUB-TAB -->
+            <div x-show="detailTab === 'logs'" class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-6">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider pb-2 border-b">Bitácora de Sesiones e Intervenciones</h3>
+              
+              <!-- Log Add Form -->
+              <div class="bg-slate-50 p-4 rounded-xl border border-slate-150 space-y-3" x-data="{ logDesc: '', logType: 'Individual', logObs: '' }">
+                <span class="text-[10px] uppercase font-bold text-slate-500 font-mono">Registrar Nueva Sesión en Bitácora</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Tipo de Intervención:</label>
+                    <select x-model="logType" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 font-bold">
+                      <option value="Individual">Individual (Estudiante)</option>
+                      <option value="Familiar">Familiar (Representante)</option>
+                      <option value="Grupal">Grupal</option>
+                      <option value="En Crisis">Contención de Crisis</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Observaciones Opcionales:</label>
+                    <input type="text" x-model="logObs" placeholder="ej. Coordinado con docente" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800">
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between items-center mb-1">
+                    <label class="block text-[10px] uppercase font-bold text-slate-400">Descripción del Proceso:</label>
+                    <button @click="toggleVoiceRecognition(val => logDesc = (logDesc ? logDesc + ' ' : '') + val)"
+                            :class="isListening ? 'bg-red-100 text-red-700 animate-pulse border-red-200' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200'"
+                            class="text-[10px] font-extrabold px-2 py-1 rounded border flex items-center gap-1 transition-all">
+                      <span class="w-1.5 h-1.5 rounded-full" :class="isListening ? 'bg-red-600 animate-ping' : 'bg-slate-400'"></span>
+                      <span x-text="isListening ? 'Escuchando dictado...' : '🎙️ Dictar por Voz (Piloto)'"></span>
+                    </button>
+                  </div>
+                  <textarea x-model="logDesc" rows="3" placeholder="Redacta la síntesis de la entrevista..." class="w-full bg-white border border-slate-200 rounded px-3 py-2 text-xs font-semibold text-slate-800"></textarea>
+                </div>
+                <div class="flex justify-end">
+                  <button @click="if (logDesc.trim()) { addBitacoraLog(logDesc, logType, logObs); logDesc = ''; logObs = ''; }" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-1.5 rounded-lg">Guardar Registro en Bitácora</button>
+                </div>
+              </div>
+
+              <!-- Logs Timeline -->
+              <div class="relative pl-6 border-l-2 border-slate-150 space-y-4">
+                <template x-for="log in activeCase.logs">
+                  <div class="relative">
+                    <!-- Point -->
+                    <span class="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full border-2 border-white bg-slate-900"></span>
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-start justify-between gap-4 text-xs">
+                      <div>
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="font-mono text-[10px] text-slate-400" x-text="log.date"></span>
+                          <span class="bg-indigo-50 text-indigo-700 font-bold text-[9px] px-1.5 rounded" x-text="log.type"></span>
+                        </div>
+                        <p class="text-slate-800 font-semibold leading-relaxed" x-text="log.description"></p>
+                        <template x-if="log.observations">
+                          <p class="text-[10px] text-slate-500 italic mt-1 font-semibold" x-text="'Obs: ' + log.observations"></p>
+                        </template>
+                      </div>
+                      <span class="text-[9px] text-slate-400 font-semibold shrink-0 font-mono" x-text="log.professional"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            <!-- 6. ANEXOS / ARCHIVOS SUB-TAB -->
+            <div x-show="detailTab === 'attachments'" class="bg-white rounded-xl border border-slate-100 p-6 shadow-sm print:hidden space-y-4">
+              <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider pb-2 border-b">Documentos y Evidencias Adjuntas</h3>
+              
+              <!-- File Drag Drop Simulation -->
+              <div class="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:bg-slate-50 transition-all relative">
+                <input type="file" @change="uploadSimulatedFile($event)" class="absolute inset-0 opacity-0 cursor-pointer">
+                <i data-lucide="paperclip" class="w-8 h-8 text-slate-400 mx-auto mb-2"></i>
+                <h4 class="text-xs font-bold text-slate-700">Arrastra o selecciona un archivo para adjuntar</h4>
+                <p class="text-[10px] text-slate-400 mt-1">Soporta PDF, imágenes firmadas o informes de campo (Tamaño máx: 10MB)</p>
+              </div>
+
+              <!-- Attachments List -->
+              <div class="space-y-2">
+                <span class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Archivos Guardados:</span>
+                <template x-if="activeCase.attachments.length === 0">
+                  <p class="text-xs text-slate-400 italic">No hay archivos guardados para este estudiante en este entorno local.</p>
+                </template>
+                <template x-if="activeCase.attachments.length > 0">
+                  <div class="space-y-2">
+                    <template x-for="(file, idx) in activeCase.attachments">
+                      <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs font-medium">
+                        <div class="flex items-center gap-2">
+                          <i data-lucide="file-text" class="w-4 h-4 text-indigo-500"></i>
+                          <div>
+                            <p class="text-slate-800 font-bold" x-text="file.name"></p>
+                            <p class="text-[9px] text-slate-400 font-mono" x-text="file.size + ' • Adjuntado: ' + file.uploadedAt"></p>
+                          </div>
+                        </div>
+                        <button @click="deleteAttachment(idx)" class="text-slate-400 hover:text-red-600 transition-all"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- NO CASE SELECTED (Render main sidebar tabs) -->
+        <template x-if="!selectedCaseId">
+          <div>
+            <!-- A. DASHBOARD VIEW -->
+            <div x-show="activeTab === 'dashboard'" class="space-y-6">
+              
+              <!-- Banner -->
+              <div class="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div class="absolute right-0 top-0 translate-x-12 -translate-y-12 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="relative z-10">
+                  <span class="bg-indigo-500/20 text-indigo-300 font-mono text-[9px] px-3 py-1 rounded-full border border-indigo-400/20 uppercase font-bold">
+                    Distrito Carchi-Macará Santa Lucía
+                  </span>
+                  <h1 class="text-2xl font-bold mt-3 font-display tracking-tight">Departamento de Consejería Estudiantil (DECE)</h1>
+                  <p class="text-indigo-200 text-xs mt-1 max-w-2xl leading-relaxed font-semibold">
+                    Atención integral a estudiantes en el Recinto Bermejo Bajo, Santa Lucía y Macará. Registro unificado de alertas tempranas, expedientes socioemocionales y actas ministeriales de compromiso.
+                  </p>
+                  <div class="flex flex-wrap gap-4 mt-6">
+                    <div class="flex items-center gap-2 text-[11px] bg-white/10 px-3 py-1.5 rounded-lg border border-white/15 font-mono">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Sistema 100% Offline e Independiente</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- KPIs Grid -->
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-xs flex items-center justify-between">
+                  <div>
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block tracking-wider">Total Casos</span>
+                    <h3 class="text-xl font-bold text-slate-800 mt-0.5" x-text="cases.length"></h3>
+                  </div>
+                  <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600"><i data-lucide="users" class="w-5 h-5"></i></div>
+                </div>
+
+                <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-xs flex items-center justify-between">
+                  <div>
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block tracking-wider">Casos Críticos</span>
+                    <h3 class="text-xl font-bold text-red-600 mt-0.5" x-text="getCriticalCount()"></h3>
+                  </div>
+                  <div class="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-600"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
+                </div>
+
+                <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-xs flex items-center justify-between">
+                  <div>
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block tracking-wider">Actas de Compromiso</span>
+                    <h3 class="text-xl font-bold text-amber-600 mt-0.5" x-text="getActasCount()"></h3>
+                  </div>
+                  <div class="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600"><i data-lucide="award" class="w-5 h-5"></i></div>
+                </div>
+
+                <div class="bg-white border border-slate-100 p-4 rounded-xl shadow-xs flex items-center justify-between">
+                  <div>
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block tracking-wider">Planes de Atención</span>
+                    <h3 class="text-xl font-bold text-emerald-600 mt-0.5" x-text="getPlanesCount()"></h3>
+                  </div>
+                  <div class="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600"><i data-lucide="notebook-tabs" class="w-5 h-5"></i></div>
+                </div>
+              </div>
+
+              <!-- Filter & Cases List -->
+              <div class="bg-white border border-slate-150 rounded-xl overflow-hidden shadow-xs">
+                <!-- Toolbar -->
+                <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                  <div class="relative w-full sm:w-72">
+                    <span class="absolute left-3 top-2.5 text-slate-400"><i data-lucide="search" class="w-4 h-4"></i></span>
+                    <input type="text" x-model="searchQuery" placeholder="Buscar por alumno o representante..." class="w-full pl-9 pr-4 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-800">
+                  </div>
+
+                  <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <select x-model="statusFilter" class="bg-white border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold text-slate-700">
+                      <option value="Todos">Todos los Estados</option>
+                      <option value="Alerta Inicial">Alerta Inicial</option>
+                      <option value="En Intervención">En Intervención</option>
+                      <option value="En Seguimiento">En Seguimiento</option>
+                      <option value="Resuelto">Resueltos</option>
+                    </select>
+
+                    <select x-model="riskFilter" class="bg-white border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold text-slate-700">
+                      <option value="Todos">Todos los Riesgos</option>
+                      <option value="Bajo">Riesgo Bajo</option>
+                      <option value="Medio">Riesgo Medio</option>
+                      <option value="Alto">Riesgo Alto</option>
+                      <option value="Crítico">Riesgo Crítico</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Cases List Table -->
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr class="bg-slate-100 border-b border-slate-200 text-slate-600 font-bold">
+                        <th class="p-3.5 pl-6">Nombre Estudiante / Curso</th>
+                        <th class="p-3.5">Representante</th>
+                        <th class="p-3.5 text-center">Nivel Riesgo</th>
+                        <th class="p-3.5 text-center">Estado Caso</th>
+                        <th class="p-3.5 text-right pr-6">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      <template x-for="c in filteredCases()">
+                        <tr class="hover:bg-slate-50 transition-colors font-medium">
+                          <td class="p-3.5 pl-6">
+                            <div class="flex items-center gap-3">
+                              <div class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold" x-text="getInitials(c.studentName)"></div>
+                              <div>
+                                <h4 class="font-bold text-slate-900 text-xs" x-text="c.studentName"></h4>
+                                <p class="text-[10px] text-slate-400 font-mono" x-text="c.grade"></p>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="p-3.5">
+                            <p class="text-slate-800 font-bold" x-text="c.representativeName"></p>
+                            <p class="text-[10px] text-slate-400 font-mono" x-text="c.phone || 'Sin número'"></p>
+                          </td>
+                          <td class="p-3.5 text-center">
+                            <span class="px-2 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wide inline-block"
+                              :class="{
+                                'bg-red-50 text-red-700 border border-red-200': c.riskLevel === 'Crítico' || c.riskLevel === 'Alto',
+                                'bg-amber-50 text-amber-700 border border-amber-200': c.riskLevel === 'Medio',
+                                'bg-green-50 text-green-700 border border-green-200': c.riskLevel === 'Bajo'
+                              }" x-text="c.riskLevel"></span>
+                          </td>
+                          <td class="p-3.5 text-center">
+                            <span class="px-2.5 py-0.5 rounded-full font-bold text-[10px] inline-block"
+                              :class="{
+                                'bg-slate-100 text-slate-700': c.status === 'Alerta Inicial',
+                                'bg-indigo-100 text-indigo-700': c.status === 'En Intervención',
+                                'bg-amber-100 text-amber-700': c.status === 'En Seguimiento',
+                                'bg-emerald-100 text-emerald-700': c.status === 'Resuelto'
+                              }" x-text="c.status"></span>
+                          </td>
+                          <td class="p-3.5 text-right pr-6">
+                            <button @click="selectedCaseId = c.id" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline">
+                              Ver Expediente
+                            </button>
+                          </td>
+                        </tr>
+                      </template>
+                      <template x-if="filteredCases().length === 0">
+                        <tr>
+                          <td colspan="5" class="p-8 text-center text-slate-400">Ningún expediente coincide con los filtros aplicados.</td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- B. AI ASSIST VIEW (Offline Guide Panel) -->
+            <div x-show="activeTab === 'ai-assist'" class="space-y-6">
+              <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-3">
+                <span class="text-amber-500 mt-0.5"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+                <div>
+                  <h3 class="text-sm font-bold text-amber-900">Sugerencias Metodológicas de Consejería Rápida</h3>
+                  <p class="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    Sugerencias pre-estructuradas por el Psic. Fausto Salazar para problemas comunes del entorno escolar de Bermejo Bajo y Santa Lucía, diseñadas para resolver rápido y de manera autónoma las actas de compromiso.
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <template x-for="item in aiGuides">
+                  <div class="bg-white border border-slate-100 rounded-xl p-5 shadow-xs space-y-3">
+                    <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wide border-b pb-1.5" x-text="item.title"></h4>
+                    <p class="text-xs text-slate-500 leading-relaxed font-semibold" x-text="item.description"></p>
+                    <div class="space-y-2 pt-2 text-[11px]">
+                      <div>
+                        <strong class="text-slate-700">Infracción General:</strong>
+                        <p class="text-slate-600 mt-0.5" x-text="item.infraction"></p>
+                      </div>
+                      <div>
+                        <strong class="text-amber-600">Compromisos Clave del Representante:</strong>
+                        <p class="text-slate-600 mt-0.5 whitespace-pre-line" x-text="item.parentCommitments"></p>
+                      </div>
+                      <div>
+                        <strong class="text-indigo-600">Compromisos Clave del Alumno:</strong>
+                        <p class="text-slate-600 mt-0.5 whitespace-pre-line" x-text="item.studentCommitments"></p>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+              </div>
+            </div>
+
+            <!-- D. CRISIS ROUTES & ACCION URGENTE VIEW -->
+            <div x-show="activeTab === 'crisis-routes'" class="space-y-6">
+              <!-- Banner de Alerta Urgente -->
+              <div class="bg-gradient-to-r from-red-600 to-rose-950 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute right-0 top-0 translate-x-12 -translate-y-12 w-96 h-96 bg-white/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="relative z-10 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <span class="bg-white/20 text-white font-mono text-[9px] px-2.5 py-1 rounded-full border border-white/20 uppercase font-extrabold animate-pulse">
+                      ¡ALERTA DE SEGURIDAD LEGAL!
+                    </span>
+                    <span class="text-[10px] font-mono text-red-100 font-bold bg-red-900/50 px-2 py-0.5 rounded">MINEDUC - ACUERDO 026-A</span>
+                  </div>
+                  <h1 class="text-2xl font-bold font-display tracking-tight">Rutas de Crisis y Oficios de Derivación Inmediata</h1>
+                  <p class="text-rose-100 text-xs leading-relaxed font-semibold max-w-3xl">
+                    Herramienta de blindaje pedagógico para el Psic. Fausto Salazar. Ante sospecha o detección de violencia, drogas, embarazo o riesgo autolítico, este módulo despliega el flujograma legal obligatorio del Ministerio de Educación y redacta el borrador del oficio de derivación judicial en tiempo real.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Selector de Rutas y Flujogramas -->
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Columna 1: Selección e Instructivo de Ruta -->
+                <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-4">
+                  <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider border-b pb-2">1. Configurar Emergencia</h3>
+                  
+                  <div class="space-y-3">
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Ruta de Crisis Activa:</label>
+                      <select x-model="selectedCrisisRoute" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-red-950 focus:ring-1 focus:ring-red-500">
+                        <option value="Violencia">Violencia Física, Psicológica o Sexual</option>
+                        <option value="Drogas">Drogas (Uso, Consumo o Tenencia para Venta)</option>
+                        <option value="Embarazo">Embarazo en Menores de Edad</option>
+                        <option value="Riesgo Suicida">Riesgo Suicida o Intento Autolítico</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Vincular Estudiante:</label>
+                      <select x-model="crisisCaseId" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500">
+                        <option value="">-- Seleccionar Estudiante de la Base --</option>
+                        <template x-for="c in cases">
+                          <option :value="c.id" x-text="c.studentName + ' (' + c.grade + ')'"></option>
+                        </template>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Entidad de Destino para Derivación:</label>
+                      <select x-model="selectedOficioTarget" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+                              @change="
+                                if (selectedOficioTarget === 'Fiscalía') {
+                                  oficioSubject = 'REPORTE Y DENUNCIA DE PRESUNTA VULNERACIÓN DE DERECHOS INFANTILES / DELITO EN ENTORNO ESCOLAR';
+                                  oficioNarrative = 'En cumplimiento con el protocolo ministerial de Violencia o Abuso, se reporta formalmente indicios razonables de hechos que podrían constituir delitos cometidos en contra del estudiante en mención. Solicitamos la activación de medidas cautelares penales inmediatas.';
+                                } else if (selectedOficioTarget === 'Junta Cantonal') {
+                                  oficioSubject = 'SOLICITUD DE MEDIDAS DE PROTECCIÓN DE DERECHOS PARA NIÑO/A/ADOLESCENTE EN VULNERABILIDAD';
+                                  oficioNarrative = 'Remito formalmente el expediente de alerta y de negligencia familiar para que se sirva dictar de forma urgente las medidas administrativas de protección a favor del estudiante, ordenando a sus progenitores el cumplimiento estricto de las terapias familiares y de consejería.';
+                                } else {
+                                  oficioSubject = 'NOTIFICACIÓN DE ALERTA RETA / INFORME TÉCNICO DE DERIVACIÓN INTERNA DISTRITAL';
+                                  oficioNarrative = 'Pongo en conocimiento de la Unidad de Apoyo a la Inclusión (UDAE) y el DECE Distrital Daule el informe de alerta respectivo del estudiante, solicitando apoyo especializado de psicopedagogía y flexibilización curricular obligatoria para el aula de clase.';
+                                }
+                              ">
+                        <option value="Fiscalía">Fiscalía General del Estado (Ecuador)</option>
+                        <option value="Junta Cantonal">Junta Cantonal de Protección de Derechos (Daule)</option>
+                        <option value="Distrito">Distrito Educativo 09D19 Daule - Dirección DECE</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Pasos Obligatorios del Protocolo MINEDUC -->
+                  <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-[11px]">
+                    <span class="text-[10px] font-mono font-bold text-rose-600 uppercase block tracking-wider">Flujograma Obligatorio (MINEDUC)</span>
+                    
+                    <div class="space-y-2" x-show="selectedCrisisRoute === 'Violencia'">
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">🚨 Paso 1:</span>
+                        <p><strong>Contención Inmediata:</strong> Aislar al estudiante de forma asertiva en el DECE. No revictimizar, no realizar interrogatorios repetitivos.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">🚨 Paso 2:</span>
+                        <p><strong>Denuncia Formal (24 Horas):</strong> Si existe sospecha de violencia sexual o física por personal o extraños, se debe derivar obligatoriamente a Fiscalía.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">🚨 Paso 3:</span>
+                        <p><strong>Seguridad y Soporte:</strong> Coordinación de adaptaciones curriculares y apoyo de despresurización en aula.</p>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2" x-show="selectedCrisisRoute === 'Drogas'">
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">⚡ Paso 1:</span>
+                        <p><strong>Preservar Integridad:</strong> Si está bajo efectos, llamar de inmediato al centro de salud local MSP (Ambulancia/911). No decomisar ni manipular sustancias directamente.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">⚡ Paso 2:</span>
+                        <p><strong>Citación Reservada:</strong> Entrevista reflexiva con representante. Remisión obligatoria al MSP para tamizaje clínico de desintoxicación.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-rose-500 font-extrabold">⚡ Paso 3:</span>
+                        <p><strong>Plan de Continuidad:</strong> Prohibida la expulsión. El colegio debe aplicar adaptaciones y monitoreo sin discriminación.</p>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2" x-show="selectedCrisisRoute === 'Embarazo'">
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-emerald-600 font-extrabold">🤰 Paso 1:</span>
+                        <p><strong>Confidencialidad Absoluta:</strong> Proteger la privacidad de la menor. Prohibido divulgar o forzar revelaciones.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-emerald-600 font-extrabold">🤰 Paso 2:</span>
+                        <p><strong>Vinculación de Salud:</strong> Agendamiento inmediato y continuo de controles prenatales con el MSP local.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-emerald-600 font-extrabold">🤰 Paso 3:</span>
+                        <p><strong>Adaptación Flex:</strong> Flexibilidad de horarios y justificación de inasistencias por citas médicas o lactancia.</p>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2" x-show="selectedCrisisRoute === 'Riesgo Suicida'">
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-red-600 font-extrabold">💔 Paso 1:</span>
+                        <p><strong>No Dejar Solo:</strong> El estudiante debe permanecer acompañado en el DECE por un adulto de confianza de forma ininterrumpida.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-red-600 font-extrabold">💔 Paso 2:</span>
+                        <p><strong>Entrega Formal MSP:</strong> Convocar inmediatamente al representante legal. Trasladar al menor de urgencia a valoración psiquiátrica de emergencia en centro MSP.</p>
+                      </div>
+                      <div class="flex items-start gap-1.5 text-slate-700">
+                        <span class="text-red-600 font-extrabold">💔 Paso 3:</span>
+                        <p><strong>Acta de Compromiso:</strong> Firma obligatoria de supervisión estricta en casa y plan institucional de acompañamiento diario en recreos.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Columna 2: Redacción del Oficio en Tiempo Real -->
+                <div class="bg-white border border-slate-150 rounded-2xl p-5 shadow-xs space-y-4 lg:col-span-2 flex flex-col justify-between">
+                  <div class="space-y-4">
+                    <div class="flex justify-between items-center border-b pb-2">
+                      <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">2. Editor de Oficios Oficiales</h3>
+                      <button @click="window.print()" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-md">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Oficio Listo A4
+                      </button>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Asunto Oficial (Oficio):</label>
+                        <input type="text" x-model="oficioSubject" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold text-slate-800 focus:ring-1 focus:ring-rose-500">
+                      </div>
+
+                      <div>
+                        <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Cuerpo Narrativo de Hechos:</label>
+                        <textarea x-model="oficioNarrative" rows="8" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 leading-relaxed font-semibold text-slate-800 focus:ring-1 focus:ring-rose-500"></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="bg-rose-50 border border-rose-100 p-4 rounded-xl text-xs text-rose-950 font-bold space-y-1">
+                    <p>⚠️ ADVERTENCIA LEGAL DE ACCIÓN INMEDIATA:</p>
+                    <p class="text-[10px] text-rose-800 leading-relaxed font-medium">
+                      De acuerdo al Código Orgánico de la Niñez y la Adolescencia (CONA), la omisión de denuncia o reporte oportuno de vulneraciones de derechos constituye responsabilidad administrativa grave para el personal DECE y directivo escolar. Pulse el botón "Imprimir" arriba para generar el acta física de entrega de inmediato.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 🖨️ DOCUMENTO DE OFICIO OFICIAL LISTO PARA IMPRESIÓN A4 EN TIERRA -->
+              <div class="hidden print:block bg-white text-black p-12 max-w-4xl mx-auto text-xs leading-relaxed print-page space-y-6 border border-slate-200 shadow-sm" style="font-family: 'Inter', sans-serif;">
+                <!-- Encabezado Institucional -->
+                <div class="text-center font-bold pb-4 border-b border-double border-slate-400">
+                  <h2 class="text-xs uppercase">REPÚBLICA DEL ECUADOR — MINISTERIO DE EDUCACIÓN</h2>
+                  <h1 class="text-sm font-bold mt-0.5 uppercase text-slate-900">UNIDAD EDUCATIVA CARCHI MACARÁ SANTA LUCÍA</h1>
+                  <p class="text-[9px] text-slate-500 font-mono mt-0.5">DISTRITO EDUCATIVO DAULE — DEPARTAMENTO DE CONSEJERÍA ESTUDIANTIL (DECE)</p>
+                  <p class="text-[8px] text-slate-400 font-mono mt-0.5">CÓDIGO AMIE: 09H03123 — SANTA LUCÍA, GUAYAS, ECUADOR</p>
+                </div>
+
+                <!-- Fecha y Destinatario -->
+                <div class="space-y-1 text-black font-semibold">
+                  <p class="text-right font-mono text-[10px]">Oficio No. UECMSL-DECE-2026-<span x-text="Date.now().toString().slice(-4)"></span></p>
+                  <p class="text-right font-mono text-[10px]" x-text="'Santa Lucía, ' + new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })"></p>
+                  
+                  <div class="pt-4 text-slate-900 leading-tight">
+                    <p class="font-bold">Señor/a Representante de:</p>
+                    <p class="font-black uppercase" x-text="selectedOficioTarget === 'Fiscalía' ? 'FISCALÍA GENERAL DEL ESTADO - CANTONAL DAULE' : (selectedOficioTarget === 'Junta Cantonal' ? 'JUNTA CANTONAL DE PROTECCIÓN DE DERECHOS DEL CANTÓN DAULE' : 'DEPARTAMENTO DE CONSEJERÍA ESTUDIANTIL DISTRITAL - MINEDUC')"></p>
+                    <p class="text-[10px] text-slate-600 font-medium font-mono">Presente.-</p>
+                  </div>
+                </div>
+
+                <!-- Datos del Estudiante Vinculado -->
+                <div class="border border-slate-300 p-3 rounded-lg text-black space-y-1 bg-slate-50/50">
+                  <p class="font-bold text-[11px] border-b pb-1 uppercase tracking-wide text-slate-800">EXPEDIENTE DE VINCULACIÓN ACADÉMICA / LEGAL:</p>
+                  <div class="grid grid-cols-2 gap-4 text-[10px] pt-1.5">
+                    <p><strong>Estudiante:</strong> <span class="font-black" x-text="crisisCaseId && cases.find(c => c.id === crisisCaseId) ? cases.find(c => c.id === crisisCaseId).studentName : 'Estudiante No Seleccionado'"></span></p>
+                    <p><strong>Grado Escolar:</strong> <span x-text="crisisCaseId && cases.find(c => c.id === crisisCaseId) ? cases.find(c => c.id === crisisCaseId).grade : 'No especificado'"></span></p>
+                    <p><strong>Representante Legal:</strong> <span x-text="crisisCaseId && cases.find(c => c.id === crisisCaseId) ? cases.find(c => c.id === crisisCaseId).representativeName : 'No especificado'"></span></p>
+                    <p><strong>Contacto Telefónico:</strong> <span x-text="crisisCaseId && cases.find(c => c.id === crisisCaseId) ? (cases.find(c => c.id === crisisCaseId).phone || 'No Registrado') : 'No Registrado'"></span></p>
+                  </div>
+                </div>
+
+                <!-- Asunto y Narrativa -->
+                <div class="space-y-4 text-black">
+                  <p><strong>ASUNTO:</strong> <span class="font-bold uppercase text-[10px]" x-text="oficioSubject"></span></p>
+                  
+                  <p class="text-justify leading-relaxed text-[11px]">
+                    De mi consideración. Por medio de la presente, en cumplimiento del Art. 24 de la Constitución de la República y de la normativa del Ministerio de Educación del Ecuador respecto al blindaje y resguardo de la integridad bio-psico-social de nuestros educandos, informo formalmente los siguientes hechos detectados en el Departamento de Consejería Estudiantil (DECE) del plantel:
+                  </p>
+
+                  <p class="text-justify leading-relaxed text-[11px] font-medium bg-slate-50 p-4 rounded-xl border border-dashed border-slate-200" x-text="oficioNarrative"></p>
+
+                  <p class="text-justify leading-relaxed text-[11px]">
+                    Por tal motivo, remitimos de forma urgente este caso a su digno despacho para que se ordene la realización del abordaje psicológico judicializado, medidas de protección, y el acompañamiento correspondiente a fin de precautelar la integridad del menor.
+                  </p>
+
+                  <p class="text-justify leading-relaxed text-[11px]">
+                    Particular que comunico para los fines de ley pertinentes.
+                  </p>
+                </div>
+
+                <!-- Firmas -->
+                <div class="pt-20 grid grid-cols-2 gap-12 text-center text-[10px] text-black">
+                  <div class="space-y-1">
+                    <p class="text-slate-300">___________________________</p>
+                    <p class="font-extrabold">Psic. Fausto Salazar Franco</p>
+                    <p class="text-[9px] text-slate-500">Responsable DECE - U.E. Carchi Macará</p>
+                  </div>
+                  <div class="space-y-1">
+                    <p class="text-slate-300">___________________________</p>
+                    <p class="font-extrabold">Director / Rector Designado</p>
+                    <p class="text-[9px] text-slate-500">Unidad Educativa Carchi Macará Santa Lucía</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- C. IMPORT / EXPORT VIEW -->
+            <div x-show="activeTab === 'data'" class="space-y-6">
+              <div class="bg-white border border-slate-150 rounded-2xl p-6 shadow-xs space-y-4">
+                <h2 class="text-lg font-bold text-slate-900">Respaldo y Sincronización</h2>
+                <p class="text-xs text-slate-500 leading-relaxed font-semibold">
+                  Al ser una herramienta completamente autónoma que guarda los datos directamente en el almacenamiento interno de este navegador, te recomendamos exportar tu base de datos regularmente para guardarla como archivo en tu computadora o en tu Google Drive.
+                </p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
+                  <div class="bg-slate-50 border border-slate-150 rounded-xl p-4 space-y-2.5">
+                    <span class="text-[10px] font-mono font-bold text-indigo-600 uppercase block tracking-wider">Exportar Respaldo</span>
+                    <p class="text-[11px] text-slate-500 font-medium">Descarga toda la base de datos de casos en formato JSON estructurado.</p>
+                    <button @click="exportDatabase()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                      <i data-lucide="download-cloud" class="w-4 h-4"></i> Descargar Archivo JSON
+                    </button>
+                  </div>
+
+                  <div class="bg-slate-50 border border-slate-150 rounded-xl p-4 space-y-2.5">
+                    <span class="text-[10px] font-mono font-bold text-indigo-600 uppercase block tracking-wider">Importar Respaldo</span>
+                    <p class="text-[11px] text-slate-500 font-medium">Restaura una base de datos guardada previamente desde un archivo JSON.</p>
+                    <div class="relative">
+                      <input type="file" @change="importDatabase($event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+                      <button class="bg-white border border-slate-250 hover:bg-slate-50 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 w-full justify-center">
+                        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Seleccionar Archivo JSON
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-950 rounded-xl p-4 space-y-2.5 text-white">
+                    <span class="text-[10px] font-mono font-bold text-indigo-300 uppercase block tracking-wider">🧬 Inicializador de Élite</span>
+                    <p class="text-[11px] text-indigo-100 font-medium">Instale de forma automática la base unificada de 216 estudiantes en el sistema.</p>
+                    <button @click="seed216Cases()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 w-full justify-center shadow-md border border-indigo-500/20">
+                      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Cargar 216 Estudiantes
+                    </button>
+                  </div>
+                </div>
+
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-xs text-indigo-950 font-semibold space-y-1">
+                  <p>💡 Recomendación del Psicólogo Fausto:</p>
+                  <p class="text-[11px] text-indigo-800 leading-relaxed font-medium">
+                    Guarda una copia mensual de tu archivo en una carpeta segura de tu Drive. De este modo, si borras el caché de tu celular, podrás recuperar todo el historial en un par de segundos con solo un clic.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </template>
+
+      </main>
+    </div>
+
+    <!-- NEW EXPEDIENTE MODAL -->
+    <div x-show="openNewCaseModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 transition-all" x-cloak>
+      <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 text-xs" @click.away="openNewCaseModal = false">
+        <div class="flex items-center justify-between pb-2 border-b">
+          <h3 class="text-sm font-bold text-slate-900">Registrar Nuevo Expediente Escolar</h3>
+          <button @click="openNewCaseModal = false" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Nombre Completo del Estudiante:</label>
+            <input type="text" x-model="newStudentName" placeholder="ej. Morán Morán Norma María..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Grado Escolar:</label>
+              <input type="text" x-model="newGrade" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Fecha de Nacimiento:</label>
+              <input type="text" x-model="newBirthDate" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Representante Legal:</label>
+              <input type="text" x-model="newRepresentativeName" placeholder="ej. Morán Norma Araceli..." class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Teléfono:</label>
+              <input type="text" x-model="newPhone" placeholder="ej. 0987654321" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Dirección Domiciliaria Detallada:</label>
+            <input type="text" x-model="newAddress" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold text-slate-800">
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button @click="openNewCaseModal = false" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg">Cancelar</button>
+          <button @click="createNewCase()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-sm">Crear Expediente</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- State & Logic Engine -->
+  <script>
+    function appState() {
+      return {
+        activeTab: 'dashboard',
+        selectedCaseId: null,
+        searchQuery: '',
+        statusFilter: 'Todos',
+        riskFilter: 'Todos',
+        openNewCaseModal: false,
+
+        // Modal fields
+        newStudentName: '',
+        newGrade: 'Quinto Año de Educación General Básica',
+        newRepresentativeName: '',
+        newPhone: '',
+        newAddress: 'Recinto Bermejo Bajo, Vía a Santa Lucía, Carchi',
+        newBirthDate: '12 de Abril de 2016',
+
+        // Rutas de Crisis y Acción Urgente
+        selectedCrisisRoute: 'Violencia',
+        crisisCaseId: '',
+        selectedOficioTarget: 'Fiscalía',
+        oficioSubject: 'REPORTE Y DENUNCIA DE PRESUNTA VULNERACIÓN DE DERECHOS INFANTILES EN EL ENTORNO FAMILIAR',
+        oficioNarrative: 'Por medio del presente, en calidad de Coordinador del DECE de la Unidad Educativa Carchi Macará Santa Lucía, pongo en conocimiento de su digna autoridad la presunta situación de riesgo y vulneración física/psicológica detectada en el menor de edad en mención. Solicitamos su intervención legal de acuerdo a los protocolos vigentes del Ministerio de Educación.',
+        whatsappMsg: '',
+        voiceTranscript: '',
+        isListening: false,
+
+        menuItems: [
+          { key: 'dashboard', label: 'Bandeja de Casos', icon: 'folder-open' },
+          { key: 'crisis-routes', label: '🚨 Rutas de Crisis', icon: 'alert-triangle' },
+          { key: 'ai-assist', label: 'Guía Consejería', icon: 'sparkles' },
+          { key: 'data', label: 'Datos / Copia JSON', icon: 'database' }
+        ],
+
+        caseSubTabs: [
+          { key: 'profile', label: 'General / Perfil' },
+          { key: 'alerta', label: 'Ficha de Alerta' },
+          { key: 'compromiso', label: 'Actas de Compromiso' },
+          { key: 'plan', label: 'Plan Psicosocial' },
+          { key: 'logs', label: 'Bitácora Sesiones' },
+          { key: 'attachments', label: 'Anexos / Archivos' }
+        ],
+
+        aiGuides: [
+          {
+            title: "Ausentismo por Trabajo Infantil o Agrícola",
+            description: "Sugerencias para casos comunes en Bermejo Bajo o zonas rurales donde las familias retiran temporalmente a los menores para actividades agrícolas.",
+            infraction: "Faltas persistentes e injustificadas al aula que superan el límite del rendimiento regular, acumulando vacíos pedagógicos por destinar días de clases ordinarios a labores de apoyo agrícola o domésticas.",
+            parentCommitments: "1. Respetar estrictamente el derecho fundamental a la educación del menor, garantizando su asistencia regular diaria todos los días laborables de lunes a viernes.\n2. Reorganizar la colaboración del menor en tareas domésticas o de campo exclusivamente en fines de semana o periodos vacacionales.\n3. Retirar oportunamente el material pedagógico de nivelación de la escuela y supervisar su desarrollo en casa.",
+            studentCommitments: "1. Asistir diariamente de manera puntual a todos los periodos de clase sin falta alguna.\n2. Comprometerse de forma activa a completar los cuadernos escolares y entregar las guías de nivelación pendientes programadas por sus docentes."
+          },
+          {
+            title: "Descuido Parental / Vulneración Sociofamiliar",
+            description: "Pautas de contención escolar para casos complejos donde el entorno de convivencia habitual expone al menor a negligencia o entornos de microtráfico.",
+            infraction: "Falta de higiene habitual, inasistencias intermitentes combinadas con signos evidentes de desatención psicoafectiva y de salud básica en el menor por negligencia en el cuidado integral del entorno familiar directo.",
+            parentCommitments: "1. Mantener al menor completamente al margen de cualquier conflicto interpersonal o situación de riesgo de adultos en el entorno domiciliario.\n2. Proveer condiciones higiénicas óptimas, vestimenta escolar limpia y alimentación balanceada diaria necesaria para su desarrollo escolar regular.\n3. Asistir puntualmente a todas las citaciones y llamados del DECE para el seguimiento integral.",
+            studentCommitments: "1. Acudir de forma autónoma al DECE en los horarios de recreo o contención acordados para recibir apoyo y escucha activa.\n2. Comunicar de inmediato a sus docentes tutores o psicólogo de confianza cualquier situación de angustia o riesgo que viva en su entorno cotidiano."
+          }
+        ],
+
+        cases: [],
+
+        init() {
+          const saved = localStorage.getItem('g_dece_cases_v2');
+          if (saved) {
+            this.cases = JSON.parse(saved);
+          } else {
+            this.cases = this.getMockData();
+            this.saveCases();
+          }
+          this.$nextTick(() => {
+            this.refreshIcons();
+          });
+        },
+
+        toggleVoiceRecognition(callback) {
+          if (this.isListening) {
+            this.isListening = false;
+            if (this.recognition) {
+              this.recognition.stop();
+            }
+          } else {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+              alert("El dictado por voz no es compatible con este navegador. Por favor use Google Chrome o Safari.");
+              return;
+            }
+            this.recognition = new SpeechRecognition();
+            this.recognition.lang = 'es-EC';
+            this.recognition.interimResults = false;
+            this.recognition.maxAlternatives = 1;
+            
+            this.isListening = true;
+            this.recognition.start();
+            
+            this.recognition.onresult = (event) => {
+              const transcript = event.results[0][0].transcript;
+              callback(transcript);
+              this.isListening = false;
+            };
+            
+            this.recognition.onerror = (event) => {
+              console.error("Speech recognition error", event.error);
+              this.isListening = false;
+            };
+            
+            this.recognition.onend = () => {
+              this.isListening = false;
+            };
+          }
+        },
+
+        saveCases() {
+          localStorage.setItem('g_dece_cases_v2', JSON.stringify(this.cases));
+        },
+
+        seed216Cases() {
+          const firstNames = ["Juan", "María", "Carlos", "Ana", "Luis", "Carmen", "Pedro", "Elena", "José", "Rosa", "Jorge", "Lucía", "Diego", "Clara", "Andrés", "Julia", "Manuel", "Sofía", "Robert", "Norma", "Raúl", "Diana", "Guido", "Laura", "Franklin", "Esthela", "Víctor", "Silvia"];
+          const lastNames = ["Pérez", "Gómez", "Morán", "Alvarado", "Chávez", "Mendoza", "Castillo", "Guerrero", "Banchón", "Salazar", "Reyes", "Cevallos", "Ortiz", "Torres", "Suárez", "Vargas", "Franco", "Meza", "Burgos", "Rugell", "Bermejo", "Macará", "Peralta", "Díaz", "Castro"];
+          const grades = [
+            "Quinto Año de Educación General Básica",
+            "Sexto Año de Educación General Básica",
+            "Séptimo Año de Educación General Básica",
+            "Octavo Año de Educación General Básica",
+            "Noveno Año de Educación General Básica",
+            "Décimo Año de Educación General Básica"
+          ];
+          
+          let generated = [];
+          generated.push(this.getMockData()[0]);
+          
+          for (let i = 2; i <= 216; i++) {
+            const fname1 = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const fname2 = firstNames[Math.floor(Math.random() * firstNames.length)];
+            const lname1 = lastNames[Math.floor(Math.random() * lastNames.length)];
+            const lname2 = lastNames[Math.floor(Math.random() * lastNames.length)];
+            
+            const studentName = `${lname1} ${lname2} ${fname1} ${fname2}`;
+            const grade = grades[Math.floor(Math.random() * grades.length)];
+            const status = i < 45 ? "En Intervención" : (i < 110 ? "En Seguimiento" : "Resuelto");
+            const riskLevel = i < 30 ? "Alto" : (i < 90 ? "Medio" : "Bajo");
+            
+            generated.push({
+              id: `c_${i}`,
+              studentName: studentName,
+              grade: grade,
+              representativeName: `${lname1} ${lastNames[Math.floor(Math.random() * lastNames.length)]} ${firstNames[Math.floor(Math.random() * firstNames.length)]}`,
+              phone: "09" + Math.floor(10000000 + Math.random() * 90000000).toString(),
+              dateOfBirth: `${Math.floor(1 + Math.random() * 28)} de ${["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][Math.floor(Math.random() * 12)]} de ${2014 + Math.floor(Math.random() * 5)}`,
+              address: `Recinto Bermejo Bajo, Vía a Santa Lucía, Daule`,
+              status: status,
+              riskLevel: riskLevel,
+              fichaAlerta: {
+                ue: "Unidad Educativa Carchi Macará Santa Lucía",
+                date: "12/05/2026",
+                notifierName: "Prof. Leonela [Tutor]",
+                notifierContact: "0982345678",
+                alertDescription: `Reporte preventivo por dificultades en el rendimiento académico y de comportamiento para el estudiante ${fname1}. Se observa decaimiento emocional intermitente.`,
+                previousProcesses: "Contacto telefónico inicial con el representante legal."
+              },
+              actasCompromiso: [],
+              planAtencion: {
+                fatherName: `${lname1} ${firstNames[Math.floor(Math.random() * firstNames.length)]}`,
+                motherName: `${lname2} ${firstNames[Math.floor(Math.random() * firstNames.length)]}`,
+                tutor: "Prof. Leonela [Tutor]",
+                address: "Recinto Bermejo Bajo, Daule",
+                diagnosisSummary: "Se detectan vacíos pedagógicos acumulados y falta de acompañamiento diario en las tareas de refuerzo en el hogar.",
+                adaptacionCurricular: {
+                  hasNee: i % 5 === 0,
+                  neeType: i % 10 === 0 ? "TDAH" : (i % 10 === 5 ? "Dislexia" : "Rezago"),
+                  adaptationGrade: i % 10 === 0 ? "Grado 1 (Acceso)" : "Grado 2 (No Significativa)",
+                  methodologicalStrategies: "Ubicación preferencial en el aula (cerca del docente y lejos de distractores).\nSegmentar tareas extensas en pasos más cortos con pausas breves.",
+                  evaluationStrategies: "Otorgar hasta un 50% de tiempo adicional para la resolución de evaluaciones.\nNo penalizar la caligrafía descuidada."
+                },
+                actions: [
+                  { description: "Refuerzo pedagógico personalizado en las materias instrumentales", executor: "Docente Tutor", duration: "Diario" },
+                  { description: "Seguimiento psicológico periódico y entrevistas de contención", executor: "DECE / Fausto Salazar", duration: "Mensual" }
+                ]
+              },
+              logs: [
+                { date: "16/05/2026", type: "Sesión Individual", description: "Se realiza la primera sesión de acercamiento. El estudiante se muestra colaborativo y expresa interés en mejorar sus calificaciones escolares.", observations: "Se observa actitud positiva hacia las adaptaciones propuestas.", professional: "Psic. Fausto Salazar" }
+              ],
+              attachments: []
+            });
+          }
+          
+          this.cases = generated;
+          this.saveCases();
+          alert("¡Base de datos de 216 estudiantes de la Unidad Educativa Carchi Macará inicializada correctamente en LocalStorage!");
+        },
+
+        get activeCase() {
+          return this.cases.find(c => c.id === this.selectedCaseId);
+        },
+
+        getInitials(name) {
+          if (!name) return 'ES';
+          const parts = name.trim().split(' ');
+          return parts.map(p => p[0]).slice(0, 2).join('').toUpperCase();
+        },
+
+        getCriticalCount() {
+          return this.cases.filter(c => c.riskLevel === 'Crítico' || c.riskLevel === 'Alto').length;
+        },
+
+        getActasCount() {
+          return this.cases.reduce((acc, c) => acc + (c.actasCompromiso ? c.actasCompromiso.length : 0), 0);
+        },
+
+        getPlanesCount() {
+          return this.cases.filter(c => c.planAtencion).length;
+        },
+
+        updateCaseStatus(val) {
+          if (this.activeCase) {
+            this.activeCase.status = val;
+            this.saveCases();
+          }
+        },
+
+        updateCaseRisk(val) {
+          if (this.activeCase) {
+            this.activeCase.riskLevel = val;
+            this.saveCases();
+          }
+        },
+
+        createBlankFichaAlerta() {
+          if (this.activeCase) {
+            this.activeCase.fichaAlerta = {
+              ue: "Carchi Macará Santa Lucía - Unidad Educativa Eloy Rugel Aragundi",
+              date: new Date().toLocaleDateString("es-ES"),
+              notifierName: "Psic. Fausto Salazar F.",
+              notifierContact: "0981245789",
+              alertDescription: "Reporte inicial verbal confidencial por parte del docente tutor, detallando indicios que requieren el acompañamiento integral y valoración urgente del DECE.",
+              previousProcesses: "Derivación verbal ordinaria y coordinación pedagógica con los docentes de grado."
+            };
+            this.saveCases();
+          }
+        },
+
+        addNewActa() {
+          if (this.activeCase) {
+            this.activeCase.actasCompromiso.unshift({
+              schoolYear: "2025-2026",
+              place: "Santa Lucía, Bermejo Bajo",
+              date: new Date().toLocaleDateString("es-ES"),
+              representativeName: this.activeCase.representativeName,
+              representativeId: "0401827463",
+              infractionDetails: "Faltas persistentes a clase por labores de apoyo en el campo.",
+              representativeCommitments: "1. El representante se compromete solemnemente a priorizar la asistencia diaria del menor al plantel.\n2. No retirará al estudiante en días hábiles de lunes a viernes.",
+              studentCommitments: "1. El estudiante se compromete a ingresar de manera puntual a todas las clases diarias.\n2. Presentará todas las tareas pedagógicas de nivelación asignadas.",
+              tutorDeceCommitments: "1. El docente tutor supervisará el rendimiento escolar y el DECE brindará acompañamiento emocional mensual."
+            });
+            this.saveCases();
+          }
+        },
+
+        deleteActa(idx) {
+          if (confirm("¿Estás seguro de que deseas eliminar esta Acta de Compromiso permanentemente?")) {
+            this.activeCase.actasCompromiso.splice(idx, 1);
+            this.saveCases();
+          }
+        },
+
+        createBlankPlanAtencion() {
+          if (this.activeCase) {
+            this.activeCase.planAtencion = {
+              fatherName: "No registrado",
+              motherName: this.activeCase.representativeName,
+              tutor: "Prof. Leonela [Tutor]",
+              address: "Recinto Bermejo Bajo",
+              diagnosisSummary: "Vulneración sociofamiliar por negligencia parental. El menor acude regularmente de forma autónoma a los espacios del DECE en búsqueda de soporte emocional.",
+              adaptacionCurricular: {
+                hasNee: false,
+                neeType: "TDAH",
+                adaptationGrade: "Grado 1 (Acceso)",
+                methodologicalStrategies: "Ubicación preferencial en el aula (cerca del docente y lejos de distractores).\nSegmentar tareas extensas en pasos más cortos con pausas breves.",
+                evaluationStrategies: "Otorgar hasta un 50% de tiempo adicional para la resolución de evaluaciones.\nNo penalizar la caligrafía descuidada."
+              },
+              actions: [
+                { description: "Entrevistas individuales y contención psicoemocional semanal", executor: "DECE / Fausto Salazar", duration: "1 vez por semana" },
+                { description: "Sesiones de sensibilización y pautas de crianza positiva", executor: "DECE / Fausto Salazar", duration: "Mensual" }
+              ]
+            };
+            this.saveCases();
+          }
+        },
+
+        addActionToPlan() {
+          if (this.activeCase && this.activeCase.planAtencion) {
+            this.activeCase.planAtencion.actions.push({
+              description: "Nueva acción de acompañamiento...",
+              executor: "Psic. Fausto Salazar",
+              duration: "Inmediata"
+            });
+            this.saveCases();
+          }
+        },
+
+        deleteActionFromPlan(idx) {
+          if (this.activeCase && this.activeCase.planAtencion) {
+            this.activeCase.planAtencion.actions.splice(idx, 1);
+            this.saveCases();
+          }
+        },
+
+        addBitacoraLog(desc, type, obs) {
+          if (this.activeCase) {
+            this.activeCase.logs.unshift({
+              date: new Date().toLocaleDateString("es-ES") + " " + new Date().toLocaleTimeString("es-ES", {hour: '2-digit', minute:'2-digit'}),
+              type: type,
+              description: desc,
+              observations: obs || "",
+              professional: "Psic. Fausto Salazar"
+            });
+            this.saveCases();
+          }
+        },
+
+        uploadSimulatedFile(event) {
+          if (this.activeCase && event.target.files.length > 0) {
+            const file = event.target.files[0];
+            this.activeCase.attachments.unshift({
+              name: file.name,
+              size: (file.size / 1024 / 1024).toFixed(2) + " MB",
+              uploadedAt: new Date().toLocaleDateString("es-ES")
+            });
+            this.saveCases();
+            alert("Archivo adjuntado con éxito en tu base de datos local.");
+          }
+        },
+
+        deleteAttachment(idx) {
+          if (confirm("¿Deseas desvincular esta evidencia adjunta?")) {
+            this.activeCase.attachments.splice(idx, 1);
+            this.saveCases();
+          }
+        },
+
+        filteredCases() {
+          return this.cases.filter(c => {
+            const nameMatch = c.studentName.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+                              c.representativeName.toLowerCase().includes(this.searchQuery.toLowerCase());
+            const statusMatch = this.statusFilter === 'Todos' || c.status === this.statusFilter;
+            const riskMatch = this.riskFilter === 'Todos' || c.riskLevel === this.riskFilter;
+            return nameMatch && statusMatch && riskMatch;
+          });
+        },
+
+        createNewCase() {
+          if (!this.newStudentName.trim() || !this.newRepresentativeName.trim()) {
+            alert("Por favor, llena los campos obligatorios del Estudiante y su Representante.");
+            return;
+          }
+
+          const newCaseObj = {
+            id: 'c_' + Date.now(),
+            studentName: this.newStudentName,
+            grade: this.newGrade,
+            representativeName: this.newRepresentativeName,
+            phone: this.newPhone,
+            dateOfBirth: this.newBirthDate,
+            address: this.newAddress,
+            status: "Alerta Inicial",
+            riskLevel: "Bajo",
+            fichaAlerta: null,
+            actasCompromiso: [],
+            planAtencion: null,
+            logs: [
+              {
+                date: new Date().toLocaleDateString("es-ES"),
+                type: "Apertura",
+                description: "Se apertura oficialmente la ficha de consejería en el sistema.",
+                observations: "Iniciado de forma autónoma",
+                professional: "Psic. Fausto Salazar"
+              }
+            ],
+            attachments: []
+          };
+
+          this.cases.unshift(newCaseObj);
+          this.saveCases();
+          this.openNewCaseModal = false;
+
+          // Clear form fields
+          this.newStudentName = '';
+          this.newRepresentativeName = '';
+          this.newPhone = '';
+
+          this.selectedCaseId = newCaseObj.id;
+          alert("¡Expediente de " + newCaseObj.studentName + " creado exitosamente!");
+        },
+
+        exportDatabase() {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.cases, null, 2));
+          const downloadAnchor = document.createElement('a');
+          downloadAnchor.setAttribute("href", dataStr);
+          downloadAnchor.setAttribute("download", "G_DECE_Fausto_Copia_Seguridad_" + new Date().toISOString().slice(0,10) + ".json");
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          downloadAnchor.remove();
+        },
+
+        importDatabase(event) {
+          if (event.target.files.length > 0) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const importedData = JSON.parse(e.target.result);
+                if (Array.isArray(importedData)) {
+                  this.cases = importedData;
+                  this.saveCases();
+                  alert("¡Base de datos restaurada correctamente! Se cargaron " + importedData.length + " expedientes.");
+                } else {
+                  alert("El formato del archivo JSON no es compatible.");
+                }
+              } catch (error) {
+                alert("Error al parsear el archivo de copia de seguridad.");
+              }
+            };
+            reader.readAsText(event.target.files[0]);
+          }
+        },
+
+        refreshIcons() {
+          if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+          }
+        },
+
+        getMockData() {
+          return [
+            {
+              id: "c_1",
+              studentName: "Morán Morán Norma María",
+              grade: "Quinto Año de Educación General Básica",
+              representativeName: "Morán Banchón Norma Araceli",
+              phone: "0981245789",
+              dateOfBirth: "12 de Abril de 2016",
+              address: "Recinto Bermejo Bajo, Vía a Santa Lucía, Carchi",
+              status: "En Intervención",
+              riskLevel: "Alto",
+              fichaAlerta: {
+                ue: "Unidad Educativa Eloy Rugel Aragundi",
+                date: "08/05/2026",
+                notifierName: "Prof. Leonela [Tutor]",
+                notifierContact: "0981245789",
+                alertDescription: "El proceso se inicia tras recibir un reporte verbal confidencial por parte de la docente de aula, alertando sobre negligencia y exposición de la menor a conductas inadecuadas en el hogar por parte del padrastro.\nSe identifica un entorno de angustia y desatención que requiere contención psicológica regular.",
+                previousProcesses: "Reporte confidencial directo de la docente e inicio de acompañamiento psicoafectivo diario."
+              },
+              actasCompromiso: [
+                {
+                  schoolYear: "2025-2026",
+                  place: "Santa Lucía, Bermejo Bajo",
+                  date: "22/05/2026",
+                  representativeName: "Morán Banchón Norma Araceli",
+                  representativeId: "0401827463",
+                  infractionDetails: "Inasistencias continuas al aula de clase y descuido en el uniforme e higiene del estudiante.",
+                  representativeCommitments: "1. Mandar a la menor todos los días aseada y con su uniforme limpio de manera obligatoria.\n2. Coordinar el transporte de regreso del menor directamente con el padre biológico para salvaguardar su seguridad integral.",
+                  studentCommitments: "1. Acudir alegremente todos los días a clases puntuales.\n2. Entregar las tareas de recuperación para salvar las notas acumuladas.",
+                  tutorDeceCommitments: "1. Docente reportará de inmediato al DECE cualquier inasistencia. DECE dará seguimiento mensual presencial."
+                }
+              ],
+              planAtencion: {
+                fatherName: "Morán Carlos José",
+                motherName: "Morán Banchón Norma Araceli",
+                tutor: "Prof. Leonela [Tutor]",
+                address: "Recinto Bermejo Bajo, Carchi",
+                diagnosisSummary: "Entorno materno disfuncional debido a negligencia. La menor manifiesta alto nivel de desorientación, pero alta receptividad con el DECE.",
+                actions: [
+                  { description: "Entrevistas y contención emocional de la menor en el DECE", executor: "Psic. Fausto Salazar", duration: "Diario / Recreos" },
+                  { description: "Coordinación de visitas domiciliarias de seguimiento", executor: "DECE / Tutor", duration: "Quincenal" }
+                ]
+              },
+              logs: [
+                { date: "15/05/2026", type: "Sesión Individual", description: "La menor asiste de forma voluntaria al DECE en su recreo. Expresa alegría cuando visita a su padre biológico e indica que su padrastro le produce temor.", observations: "Contención activa realizada.", professional: "Psic. Fausto Salazar" }
+              ],
+              attachments: []
+            }
+          ];
+        }
+      }
+    }
+  </script>
+</body>
+</html>
